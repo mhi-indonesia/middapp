@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Middleware Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .stat-card { cursor: pointer; transition: 0.3s; border: none; }
+        .stat-card:hover { transform: translateY(-5px); opacity: 0.9; }
+        .nav-tabs .nav-link { color: #555; }
+        .nav-tabs .nav-link.active { font-weight: bold; color: #0d6efd; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <h2 class="mb-4">📊 Middleware Dashboard</h2>
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card stat-card bg-primary text-white p-3 shadow-sm" onclick="location.href='/dashboard?tab=orders'">
+                    <h6>Total Pesanan</h6><h3><%= stats.total %></h3>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card bg-success text-white p-3 shadow-sm" onclick="location.href='/dashboard?tab=orders&status=SUCCESS'">
+                    <h6>Sukses Sinkron</h6><h3><%= stats.sukses %></h3>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card bg-danger text-white p-3 shadow-sm" onclick="location.href='/dashboard?tab=orders&status=FAILED'">
+                    <h6>Gagal Sinkron</h6><h3><%= stats.gagal %></h3>
+                </div>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item"><a class="nav-link <%= currentTab === 'orders' ? 'active' : '' %>" href="/dashboard?tab=orders">Tabel Orders</a></li>
+            <li class="nav-item"><a class="nav-link <%= currentTab === 'users' ? 'active' : '' %>" href="/dashboard?tab=users">Tabel Users</a></li>
+            <li class="nav-item"><a class="nav-link <%= currentTab === 'items' ? 'active' : '' %>" href="/dashboard?tab=items">Tabel Items</a></li>
+        </ul>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <% if(currentTab === 'orders') { %>
+                                <tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th></tr>
+                            <% } else if(currentTab === 'users') { %>
+                                <tr><th>Nama</th><th>Telepon</th><th>Email</th><th>Order Ref</th></tr>
+                            <% } else { %>
+                                <tr><th>Produk</th><th>Qty</th><th>Harga</th><th>Order Ref</th></tr>
+                            <% } %>
+                        </thead>
+                        <tbody>
+                            <% data.forEach(row => { %>
+                                <tr>
+                                    <% if(currentTab === 'orders') { %>
+                                        <td><strong><%= row.grab_order_id %></strong><br><small class="text-muted"><%= new Date(row.created_at).toLocaleString('id-ID') %></small></td>
+                                        <td><%= row.customer_name %></td>
+                                        <td>
+                                            <% if(row.barang) { %>
+                                                <small><%= row.barang.length %> item(s)</small>
+                                            <% } %>
+                                        </td>
+                                        <td>Rp <%= Number(row.total_amount).toLocaleString() %></td>
+                                        <td>
+                                            <span class="badge bg-<%= row.status_sync === 'SUCCESS' ? 'success' : 'danger' %>"><%= row.status_sync %></span>
+                                            <% if(row.error_msg) { %><br><small class="text-danger" style="font-size:0.7rem"><%= row.error_msg %></small><% } %>
+                                        </td>
+                                    <% } else if(currentTab === 'users') { %>
+                                        <td><%= row.customer_name %></td><td><%= row.phone_number %></td><td><%= row.customer_email %></td><td>#<%= row.order_id %></td>
+                                    <% } else { %>
+                                        <td><%= row.product_name %></td><td><%= row.quantity %></td><td><%= row.sale_price %></td><td>#<%= row.order_id %></td>
+                                    <% } %>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        <% for(let i = 1; i <= totalPages; i++) { %>
+                            <li class="page-item <%= currentPage === i ? 'active' : '' %>">
+                                <a class="page-link" href="/dashboard?tab=<%= currentTab %>&status=<%= currentStatus %>&page=<%= i %>"><%= i %></a>
+                            </li>
+                        <% } %>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

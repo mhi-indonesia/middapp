@@ -1,0 +1,20 @@
+{
+  "name": "midapp",
+  "version": "1.0.0",
+  "description": "Middleware Grab to Ginee",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Kris Wangsa Putra",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "dotenv": "^17.2.3",
+    "ejs": "^4.0.1",
+    "express": "^5.2.1",
+    "mysql2": "^3.16.1"
+  }
+}
