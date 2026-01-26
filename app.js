@@ -116,7 +116,7 @@ app.get('/dashboard', async (req, res) => {
             totalCount = countRes[0].cnt;
         }
 
-        res.render('dashboard', { 
+        res.render('dashboard.ejs', { 
             stats: statsRows[0] || {total:0, sukses:0, gagal:0}, 
             data: dataRows,
             currentPage: page,
