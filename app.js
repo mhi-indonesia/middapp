@@ -199,26 +199,43 @@ app.post('/webhook/grab', async (req, res) => {
         res.status(200).send('OK');
 
         // Background Sync ke Ginee
-        const gineeResult = await kirimKeGineeDenganRetry(grabData);
-        if (gineeResult.success) {
+        // Asumsikan kita hanya sinkron ke Ginee jika status dari Grab adalah 'PAID'
+        if (grabData.status === 'PAID') {
             
-            await pool.query("UPDATE orders SET status_sync = 'SUCCESS' WHERE id = ?", [newID]);
+            // Jalankan Background Sync ke Ginee
+            const gineeResult = await kirimKeGineeDenganRetry(grabData);
+            
+            if (gineeResult.success) {
+                // Update status di tabel orders
+                await pool.query("UPDATE orders SET status_sync = 'SUCCESS' WHERE id = ?", [newID]);
 
-            // Simpan log sebagai SUCCESS di tabel errors_log
+                // Catat log sukses
+                await pool.query(
+                    `INSERT INTO errors_log (order_id, status_sync, status_code, error_message) 
+                    VALUES (?, ?, ?, ?)`,
+                    [newID, 'SUCCESS', 200, 'Sinkronisasi Berhasil']
+                );
+            } else {
+                // Update status gagal
+                await pool.query("UPDATE orders SET status_sync = 'FAILED' WHERE id = ?", [newID]);
+                
+                // Catat log gagal beserta raw response-nya
+                await pool.query(
+                    `INSERT INTO errors_log (order_id, status_sync, status_code, error_message, raw_response) 
+                    VALUES (?, ?, ?, ?, ?)`,
+                    [newID, 'FAILED', 500, 'Gagal Sinkron Ginee', gineeResult.message]
+                );
+            }
+            
+        } else {
+            // Jika status bukan PAID (misal PENDING atau CANCELLED)
+            console.log(`Order ${grabData.orderID} tidak disinkron karena status: ${grabData.status}`);
+            
+            // Opsional: Catat di log bahwa ini ditunda
             await pool.query(
                 `INSERT INTO errors_log (order_id, status_sync, status_code, error_message) 
                 VALUES (?, ?, ?, ?)`,
-                [newID, 'SUCCESS', 200, 'Sinkronisasi Berhasil']
-            );
-
-        } else {
-            await pool.query("UPDATE orders SET status_sync = 'FAILED' WHERE id = ?", [newID]);
-            
-            // Simpan log sebagai FAILED di tabel errors_log
-            await pool.query(
-                `INSERT INTO errors_log (order_id, status_sync, status_code, error_message, raw_response) 
-                VALUES (?, ?, ?, ?, ?)`,
-                [newID, 'FAILED', 500, 'Gagal Sinkron Ginee', gineeResult.message]
+                [newID, 'SKIPPED', 202, `Sinkronisasi ditunda (Status: ${grabData.status})`]
             );
         }
     } catch (err) {
@@ -228,6 +245,54 @@ app.post('/webhook/grab', async (req, res) => {
         res.status(500).send('Error Database: ' + err.message);
     } finally {
         conn.release();
+    }
+});
+
+// ==========================================
+// ROUTE SINKRONISASI MANUAL
+// ==========================================
+app.post('/sync-order/:id', async (req, res) => {
+    try {
+        const orderId = req.params.id;
+
+        // 1. Ambil data order dan raw_grab_data dari DB
+        const [orders] = await pool.query("SELECT * FROM orders WHERE id = ?", [orderId]);
+        
+        if (orders.length === 0) return res.status(404).json({ success: false, message: "Order tidak ditemukan" });
+
+        const orderData = orders[0];
+
+        // Validasi
+        if (orderData.payment_status !== 'PAID') {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Gagal: Pesanan belum dibayar (Status: " + orderData.payment_status + ")" 
+            });
+        }
+
+        const grabData = JSON.parse(orderData.raw_grab_data);
+
+        // 2. Jalankan fungsi retry ke Ginee
+        const gineeResult = await kirimKeGineeDenganRetry(grabData);
+
+        if (gineeResult.success) {
+            await pool.query("UPDATE orders SET status_sync = 'SUCCESS' WHERE id = ?", [orderId]);
+            await pool.query(
+                `INSERT INTO errors_log (order_id, status_sync, status_code, error_message) VALUES (?, 'SUCCESS', 200, 'Resync Manual Berhasil')`,
+                [orderId]
+            );
+            res.json({ success: true, message: "Sinkronisasi Berhasil!" });
+        } else {
+            await pool.query("UPDATE orders SET status_sync = 'FAILED' WHERE id = ?", [orderId]);
+            await pool.query(
+                `INSERT INTO errors_log (order_id, status_sync, status_code, error_message, raw_response) VALUES (?, 'FAILED', 500, 'Resync Manual Gagal', ?)`,
+                [orderId, gineeResult.message]
+            );
+            res.status(500).json({ success: false, message: "Gagal: " + gineeResult.message });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 

@@ -40,7 +40,7 @@
                     <table class="table align-middle">
                         <thead class="table-light">
                             <% if(currentTab === 'orders') { %>
-                                <tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Status Sync</th></tr>
+                                <tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Status Sync</th><th>Aksi</th></tr>
                             <% } else if(currentTab === 'users') { %>
                                 <tr><th>Grab Order ID</th><th>Nama</th><th>Telepon</th><th>Email</th><th>Order Ref</th></tr>
                             <% } else { %>
@@ -68,6 +68,15 @@
                                         </td>
                                         <td>
                                             <span class="badge bg-<%= row.status_sync === 'SUCCESS' ? 'success' : 'danger' %>"><%= row.status_sync %></span>
+                                        </td>
+                                        <td>
+                                            <% if (row.status_sync !== 'SUCCESS') { %>
+                                                <button class="btn btn-sm btn-outline-primary" onclick="reSync('<%= row.id %>', event)">
+                                                    🔄 Sync
+                                                </button>
+                                            <% } else { %>
+                                                <span class="text-success small">✔ Synced</span>
+                                            <% } %>
                                         </td>
                                     <% } else if(currentTab === 'users') { %>
                                         <td><span class="badge bg-secondary"><%= row.grab_order_id %></span></td>
@@ -148,6 +157,6 @@
 
         </div>
     </div>
-
+<script src="/js/dashboard-action.js"></script>
 </body>
 </html>
