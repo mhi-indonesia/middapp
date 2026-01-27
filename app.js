@@ -41,7 +41,7 @@ async function kirimKeGineeDenganRetry(orderData, maxAttempts = 3) {
             const response = await axios.post(`http://localhost:${PORT}/simulasi-ginee-api`, {
                 order_id: orderData.orderID,
                 amount: orderData.amount
-            }, { timeout: 10000 });
+            }, { timeout: 5000 });
             return { success: true, message: response.data.message };
         } catch (error) {
             const errorMsg = error.response ? JSON.stringify(error.response.data) : error.message;
@@ -68,17 +68,29 @@ app.get('/dashboard', async (req, res) => {
         const tab = req.query.tab || 'orders';
         const status = req.query.status || '';
         const page = parseInt(req.query.page) || 1;
+        const logPage = parseInt(req.query.logPage) || 1; // Ambil logPage dari URL
+
         const limit = 5;
         const offset = (page - 1) * limit;
 
-        // 1. Errors_log (Riwayat Sinkronisasi)
+        // --- TAMBAHKAN DEFINISI INI ---
+        const logLimit = 10; 
+        const logOffset = (logPage - 1) * logLimit; 
+        // ------------------------------
+
+
+        // 1. Ambil DATA LOG dengan LIMIT & OFFSET
         const [syncLogs] = await pool.query(`
             SELECT e.*, o.grab_order_id 
             FROM errors_log e
             JOIN orders o ON e.order_id = o.id
             ORDER BY e.created_at DESC 
-            LIMIT 20
+            LIMIT ${logLimit} OFFSET ${logOffset}
         `);
+
+        // 2. Hitung total halaman untuk log
+        const [logCountRes] = await pool.query(`SELECT COUNT(*) as cnt FROM errors_log`);
+        const totalLogPages = Math.ceil(logCountRes[0].cnt / logLimit) || 1;
 
         // 2. Ambil Statistik
         const [statsRows] = await pool.query(`
@@ -151,7 +163,10 @@ app.get('/dashboard', async (req, res) => {
             totalPages: Math.ceil(totalCount / limit) || 1,
             currentTab: tab,
             currentStatus: status,
-            syncLogs: syncLogs
+            syncLogs: syncLogs,
+            syncLogs: syncLogs,
+            currentLogPage: logPage,
+            totalLogPages: totalLogPages,
         });
     } catch (err) {
         console.error(err);
@@ -165,105 +180,94 @@ app.get('/dashboard', async (req, res) => {
 app.post('/webhook/grab', async (req, res) => {
     const grabData = req.body;
     const conn = await pool.getConnection();
+    
+    // Deklarasikan variabel di luar blok agar bisa diakses di seluruh fungsi
+    let finalID; 
+
     try {
         await conn.beginTransaction();
 
-        // 1. Cek apakah Order ID ini sudah pernah masuk sebelumnya
+        // 1. Cek apakah Order ID ini sudah ada
         const [existingOrder] = await conn.query(
             "SELECT id, payment_status FROM orders WHERE grab_order_id = ?", 
             [grabData.orderID]
         );
 
-        let orderId;
-
         if (existingOrder.length > 0) {
-            // JIKA SUDAH ADA: Update saja status payment-nya
-            orderId = existingOrder[0].id;
+            // JIKA SUDAH ADA: Update
+            finalID = existingOrder[0].id;
             await conn.query(
                 "UPDATE orders SET payment_status = ?, raw_grab_data = ? WHERE id = ?",
-                [grabData.status || 'PENDING', JSON.stringify(grabData), orderId]
+                [grabData.status || 'PENDING', JSON.stringify(grabData), finalID]
             );
-            console.log(`Order ${grabData.orderID} diupdate ke status: ${grabData.status}`);
+            console.log(`Order ${grabData.orderID} updated. ID: ${finalID}`);
         } else {
-
-            // 1. Amankan data mentah ke grab_raw di awal
+            // JIKA BARU: Simpan Raw dan Insert ke Tabel Orders
             await conn.query(
                 `INSERT INTO grab_raw (grab_order_id, payload) VALUES (?, ?)`,
                 [grabData.orderID, JSON.stringify(grabData)]
             );
 
-            // 2. Insert Order
             const [orderRes] = await conn.query(
                 `INSERT INTO orders (grab_order_id, total_amount, payment_status, raw_grab_data) VALUES (?, ?, ?, ?)`,
-                [grabData.orderID, grabData.amount, grabData.status || 'PAID', JSON.stringify(grabData)]
+                [grabData.orderID, grabData.amount, grabData.status || 'PENDING', JSON.stringify(grabData)]
             );
-            const newID = orderRes.insertId;
+            
+            // Simpan ID yang baru saja dibuat ke finalID
+            finalID = orderRes.insertId;
 
-            // 3. Insert Items
+            // Insert Items
             for (let item of grabData.items) {
                 await conn.query(
                     `INSERT INTO order_items (order_id, product_name, quantity, sale_price, regular_price) VALUES (?, ?, ?, ?, ?)`,
-                    [newID, item.name, item.qty, item.price, item.price]
+                    [finalID, item.name, item.qty, item.price, item.price]
                 );
             }
 
-            // 4. Insert User
+            // Insert User
             await conn.query(
                 `INSERT INTO users (order_id, customer_name, phone_number, customer_email) VALUES (?, ?, ?, ?)`,
-                [newID, grabData.customer.name, grabData.customer.phone, grabData.customer.email]
+                [finalID, grabData.customer.name, grabData.customer.phone, grabData.customer.email]
             );
+            console.log(`Order ${grabData.orderID} created. ID: ${finalID}`);
         }
 
         await conn.commit();
+        // Berikan respon ke Grab segera setelah database utama aman
         res.status(200).send('OK');
 
-        // Background Sync ke Ginee
-        // Asumsikan kita hanya sinkron ke Ginee jika status dari Grab adalah 'PAID'
+        // 2. PROSES LOGGING & SYNC (Menggunakan finalID yang sudah pasti terdefinisi)
         if (grabData.status === 'PAID') {
-            
-            // Jalankan Background Sync ke Ginee
             const gineeResult = await kirimKeGineeDenganRetry(grabData);
             
             if (gineeResult.success) {
-                // Update status di tabel orders
-                await pool.query("UPDATE orders SET status_sync = 'SUCCESS' WHERE id = ?", [newID]);
-
-                // Catat log sukses
+                await pool.query("UPDATE orders SET status_sync = 'SUCCESS' WHERE id = ?", [finalID]);
                 await pool.query(
-                    `INSERT INTO errors_log (order_id, status_sync, status_code, error_message) 
-                    VALUES (?, ?, ?, ?)`,
-                    [newID, 'SUCCESS', 200, 'Sinkronisasi Berhasil']
+                    `INSERT INTO errors_log (order_id, status_sync, status_code, error_message) VALUES (?, 'SUCCESS', 200, 'Sinkronisasi Berhasil')`,
+                    [finalID]
                 );
             } else {
-                // Update status gagal
-                await pool.query("UPDATE orders SET status_sync = 'FAILED' WHERE id = ?", [newID]);
-                
-                // Catat log gagal beserta raw response-nya
+                await pool.query("UPDATE orders SET status_sync = 'FAILED' WHERE id = ?", [finalID]);
                 await pool.query(
-                    `INSERT INTO errors_log (order_id, status_sync, status_code, error_message, raw_response) 
-                    VALUES (?, ?, ?, ?, ?)`,
-                    [newID, 'FAILED', 500, 'Gagal Sinkron Ginee', gineeResult.message]
+                    `INSERT INTO errors_log (order_id, status_sync, status_code, error_message, raw_response) VALUES (?, 'FAILED', 500, 'Gagal Sinkron Ginee', ?)`,
+                    [finalID, gineeResult.message]
                 );
             }
-            
         } else {
-            // Jika status bukan PAID (misal PENDING atau CANCELLED)
-            console.log(`Order ${grabData.orderID} tidak disinkron karena status: ${grabData.status}`);
-            
-            // Opsional: Catat di log bahwa ini ditunda
+            // Catat log PENDING untuk status selain PAID
             await pool.query(
-                `INSERT INTO errors_log (order_id, status_sync, status_code, error_message) 
-                VALUES (?, ?, ?, ?)`,
-                [newID, 'SKIPPED', 202, `Sinkronisasi ditunda (Status: ${grabData.status})`]
+                "INSERT INTO errors_log (order_id, status_sync, status_code, error_message) VALUES (?, ?, ?, ?)",
+                [finalID, 'PENDING', 202, `Sinkronisasi ditunda (Status: ${grabData.status})`]
             );
         }
+
     } catch (err) {
-        await conn.rollback();
-        console.error(err);
+        if (conn) await conn.rollback();
+        console.error("Webhook Error:", err);
         if (err.code === 'ER_DUP_ENTRY') return res.status(200).send('Duplicate');
-        res.status(500).send('Error Database: ' + err.message);
+        if (!res.headersSent) res.status(500).send('Error Database: ' + err.message);
     } finally {
-        conn.release();
+        if (conn) conn.release();
     }
 });
 
@@ -316,7 +320,12 @@ app.post('/sync-order/:id', async (req, res) => {
 });
 
 app.post('/simulasi-ginee-api', (req, res) => {
-    res.status(200).json({ message: "Sukses terhubung ke Ginee" });
+    // res.status(200).json({ message: "Sukses terhubung ke Ginee" });
+    res.status(400).json({ 
+        code: "INVALID_PARAM", 
+        message: "Product SKU 'GRB-001' not found in Ginee inventory",
+        request_id: "req-999222"
+    });
 });
 
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

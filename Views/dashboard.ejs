@@ -111,52 +111,104 @@
 
             <!-- log history -->
             <!-- <div class="card shadow-sm mt-4"> -->
-                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Aktivitas Sinkronisasi Ginee</h5>
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">🔄 Synchronization Logs</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
+                        <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th>Waktu</th>
                                     <th>Order ID</th>
                                     <th>Status</th>
                                     <th>Pesan</th>
-                                    <th>Detail Respon</th>
+                                    <th>Detail</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <% syncLogs.forEach(log => { %>
-                                <tr>
-                                    <td><small><%= new Date(log.created_at).toLocaleString('id-ID') %></small></td>
-                                    <td><strong><%= log.grab_order_id %></strong></td>
-                                    <td>
-                                        <span class="badge <%= log.status_sync === 'SUCCESS' ? 'bg-success' : 'bg-danger' %>">
-                                            <%= log.status_sync %> (<%= log.status_code %>)
-                                        </span>
-                                    </td>
-                                    <td><%= log.error_message %></td>
-                                    <td>
-                                        <% if (log.raw_response) { %>
-                                            <details>
-                                                <summary class="btn btn-sm btn-outline-info">Buka JSON</summary>
-                                                <pre class="bg-light p-2 mt-2 border" style="font-size: 11px; max-height: 200px; overflow: auto;"><%= log.raw_response %></pre>
-                                            </details>
-                                        <% } else { %>
-                                            <span class="text-muted small">-</span>
-                                        <% } %>
-                                    </td>
-                                </tr>
+                                    <tr>
+                                        <td><small><%= new Date(log.created_at).toLocaleString('id-ID') %></small></td>
+                                        <td><strong><%= log.grab_order_id %></strong></td>
+                                        <td>
+                                            <% 
+                                                // Perbaikan: Pastikan status_sync tidak NULL di tampilan
+                                                let currentStatus = log.status_sync || 'PENDING';
+                                                let badgeClass = (currentStatus === 'SUCCESS') ? 'bg-success' : 
+                                                                (currentStatus === 'FAILED') ? 'bg-danger' : 'bg-warning text-dark';
+                                            %>
+                                            <span class="badge rounded-pill <%= badgeClass %>"><%= currentStatus %></span>
+                                        </td>
+                                        <td><small><%= log.error_message %></small></td>
+                                        <td>
+                                            <% if (log.raw_response) { %>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="showErrorLog('<%= log.id %>')">
+                                                    ⚠ Detail Error
+                                                </button>
+                                                <script id="error-data-<%= log.id %>" type="application/json">
+                                                    <%- JSON.stringify(log.raw_response) %>
+                                                </script>
+                                            <% } else { %>
+                                                <span class="text-muted small">-</span>
+                                            <% } %>
+                                        </td>
+                                    </tr>
                                 <% }) %>
                             </tbody>
                         </table>
                     </div>
                 </div>
+                
+                <div class="card-footer d-flex justify-content-between align-items-center bg-white">
+                    <span class="small text-muted">Halaman <%= currentLogPage %> dari <%= totalLogPages %></span>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <% for(let i = 1; i <= totalLogPages; i++) { %>
+                                <li class="page-item <%= currentLogPage === i ? 'active' : '' %>">
+                                    <a class="page-link" href="?tab=<%= currentTab %>&page=<%= currentPage %>&logPage=<%= i %>">
+                                        <%= i %>
+                                    </a>
+                                </li>
+                            <% } %>
+                        </ul>
+                    </nav>
+                </div>
             <!-- </div> -->
 
         </div>
-    </div>
-<script src="/js/dashboard-action.js"></script>
+        <div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title">Pesan Error Sinkronisasi</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>Response API:</strong></p>
+                        <pre id="errorContent" class="bg-light p-3 border" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function showErrorLog(logId) {
+                const errorData = document.getElementById('error-data-' + logId).textContent;
+                // Mencoba parse jika data berupa string JSON, jika tidak tampilkan apa adanya
+                try {
+                    const parsed = JSON.parse(JSON.parse(errorData)); // Double parse jika tersimpan sebagai stringified JSON
+                    document.getElementById('errorContent').textContent = JSON.stringify(parsed, null, 4);
+                } catch (e) {
+                    document.getElementById('errorContent').textContent = errorData;
+                }
+                
+                const modal = new bootstrap.Modal(document.getElementById('errorModal'));
+                modal.show();
+            }
+        </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script src="/js/dashboard-action.js"></script>
 </body>
 </html>
