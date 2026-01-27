@@ -1,4 +1,4 @@
-require('dotenv').config(); // Opsional jika ingin pakai .env
+require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2/promise');
 const axios = require('axios');
@@ -34,7 +34,7 @@ async function kirimKeGineeDenganRetry(orderData, maxAttempts = 3) {
     while (attempt < maxAttempts) {
         attempt++;
         try {
-            const response = await axios.post(`http://localhost:${PORT}/simulasi-ginee-api`, {
+            const response = await axios.post(`https://midapp.biz.id/simulasi-ginee-api`, {
                 order_id: orderData.orderID,
                 amount: orderData.amount
             }, { timeout: 5000 });
@@ -67,6 +67,15 @@ app.get('/dashboard', async (req, res) => {
         const limit = 5;
         const offset = (page - 1) * limit;
 
+        // Errors_log
+        const [syncLogs] = await pool.query(`
+            SELECT e.*, o.grab_order_id 
+            FROM errors_log e
+            JOIN orders o ON e.order_id = o.id
+            ORDER BY e.created_at DESC 
+            LIMIT 20
+        `);
+
         // 1. Ambil Statistik (MySQL CASE WHEN)
         const [statsRows] = await pool.query(`
             SELECT 
@@ -97,7 +106,7 @@ app.get('/dashboard', async (req, res) => {
             
             [dataRows] = await pool.query(query, [...params, limit, offset]);
 
-            // Ambil items untuk setiap order secara manual (MySQL kompatibilitas)
+            // Ambil items untuk setiap order secara manual
             for (let order of dataRows) {
                 const [items] = await pool.query("SELECT * FROM order_items WHERE order_id = ?", [order.id]);
                 order.barang = items; 
@@ -122,7 +131,8 @@ app.get('/dashboard', async (req, res) => {
             currentPage: page,
             totalPages: Math.ceil(totalCount / limit) || 1,
             currentTab: tab,
-            currentStatus: status
+            currentStatus: status,
+            syncLogs: syncLogs
         });
     } catch (err) {
         console.error(err);
@@ -139,7 +149,13 @@ app.post('/webhook/grab', async (req, res) => {
     try {
         await conn.beginTransaction();
 
-        // 1. Insert Order
+        // 1. Amankan data mentah ke grab_raw di awal
+        await conn.query(
+            `INSERT INTO grab_raw (grab_order_id, payload) VALUES (?, ?)`,
+            [grabData.orderID, JSON.stringify(grabData)]
+        );
+
+        // 2. Insert Order
         const [orderRes] = await conn.query(
             `INSERT INTO orders (grab_order_id, total_amount, raw_grab_data) VALUES (?, ?, ?)`,
             [grabData.orderID, grabData.amount, JSON.stringify(grabData)]
@@ -166,10 +182,25 @@ app.post('/webhook/grab', async (req, res) => {
         // Background Sync ke Ginee
         const gineeResult = await kirimKeGineeDenganRetry(grabData);
         if (gineeResult.success) {
+            
             await pool.query("UPDATE orders SET status_sync = 'SUCCESS' WHERE id = ?", [newID]);
+
+            // Simpan log sebagai SUCCESS di tabel errors_log
+            await pool.query(
+                `INSERT INTO errors_log (order_id, status_sync, status_code, error_message) 
+                VALUES (?, ?, ?, ?)`,
+                [newID, 'SUCCESS', 200, 'Sinkronisasi Berhasil']
+            );
+
         } else {
             await pool.query("UPDATE orders SET status_sync = 'FAILED' WHERE id = ?", [newID]);
-            // Pastikan tabel errors_log ada jika ingin mencatat log error
+            
+            // Simpan log sebagai FAILED di tabel errors_log
+            await pool.query(
+                `INSERT INTO errors_log (order_id, status_sync, status_code, error_message, raw_response) 
+                VALUES (?, ?, ?, ?, ?)`,
+                [newID, 'FAILED', 500, 'Gagal Sinkron Ginee', gineeResult.message]
+            );
         }
     } catch (err) {
         await conn.rollback();

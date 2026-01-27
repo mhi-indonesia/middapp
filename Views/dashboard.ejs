@@ -91,5 +91,52 @@
             </div>
         </div>
     </div>
+
+    <!-- log history -->
+     <div class="card shadow-sm mt-4">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Aktivitas Sinkronisasi Ginee</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Waktu</th>
+                            <th>Order ID</th>
+                            <th>Status</th>
+                            <th>Pesan</th>
+                            <th>Detail Respon</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% syncLogs.forEach(log => { %>
+                        <tr>
+                            <td><small><%= new Date(log.created_at).toLocaleString('id-ID') %></small></td>
+                            <td><strong><%= log.grab_order_id %></strong></td>
+                            <td>
+                                <span class="badge <%= log.status_sync === 'SUCCESS' ? 'bg-success' : 'bg-danger' %>">
+                                    <%= log.status_sync %> (<%= log.status_code %>)
+                                </span>
+                            </td>
+                            <td><%= log.error_message %></td>
+                            <td>
+                                <% if (log.raw_response) { %>
+                                    <details>
+                                        <summary class="btn btn-sm btn-outline-info">Buka JSON</summary>
+                                        <pre class="bg-light p-2 mt-2 border" style="font-size: 11px; max-height: 200px; overflow: auto;"><%= log.raw_response %></pre>
+                                    </details>
+                                <% } else { %>
+                                    <span class="text-muted small">-</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
