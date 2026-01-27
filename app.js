@@ -168,32 +168,51 @@ app.post('/webhook/grab', async (req, res) => {
     try {
         await conn.beginTransaction();
 
-        // 1. Amankan data mentah ke grab_raw di awal
-        await conn.query(
-            `INSERT INTO grab_raw (grab_order_id, payload) VALUES (?, ?)`,
-            [grabData.orderID, JSON.stringify(grabData)]
+        // 1. Cek apakah Order ID ini sudah pernah masuk sebelumnya
+        const [existingOrder] = await conn.query(
+            "SELECT id, payment_status FROM orders WHERE grab_order_id = ?", 
+            [grabData.orderID]
         );
 
-        // 2. Insert Order
-        const [orderRes] = await conn.query(
-            `INSERT INTO orders (grab_order_id, total_amount, payment_status, raw_grab_data) VALUES (?, ?, ?, ?)`,
-            [grabData.orderID, grabData.amount, grabData.status || 'PAID', JSON.stringify(grabData)]
-        );
-        const newID = orderRes.insertId;
+        let orderId;
 
-        // 3. Insert Items
-        for (let item of grabData.items) {
+        if (existingOrder.length > 0) {
+            // JIKA SUDAH ADA: Update saja status payment-nya
+            orderId = existingOrder[0].id;
             await conn.query(
-                `INSERT INTO order_items (order_id, product_name, quantity, sale_price, regular_price) VALUES (?, ?, ?, ?, ?)`,
-                [newID, item.name, item.qty, item.price, item.price]
+                "UPDATE orders SET payment_status = ?, raw_grab_data = ? WHERE id = ?",
+                [grabData.status || 'PENDING', JSON.stringify(grabData), orderId]
+            );
+            console.log(`Order ${grabData.orderID} diupdate ke status: ${grabData.status}`);
+        } else {
+
+            // 1. Amankan data mentah ke grab_raw di awal
+            await conn.query(
+                `INSERT INTO grab_raw (grab_order_id, payload) VALUES (?, ?)`,
+                [grabData.orderID, JSON.stringify(grabData)]
+            );
+
+            // 2. Insert Order
+            const [orderRes] = await conn.query(
+                `INSERT INTO orders (grab_order_id, total_amount, payment_status, raw_grab_data) VALUES (?, ?, ?, ?)`,
+                [grabData.orderID, grabData.amount, grabData.status || 'PAID', JSON.stringify(grabData)]
+            );
+            const newID = orderRes.insertId;
+
+            // 3. Insert Items
+            for (let item of grabData.items) {
+                await conn.query(
+                    `INSERT INTO order_items (order_id, product_name, quantity, sale_price, regular_price) VALUES (?, ?, ?, ?, ?)`,
+                    [newID, item.name, item.qty, item.price, item.price]
+                );
+            }
+
+            // 4. Insert User
+            await conn.query(
+                `INSERT INTO users (order_id, customer_name, phone_number, customer_email) VALUES (?, ?, ?, ?)`,
+                [newID, grabData.customer.name, grabData.customer.phone, grabData.customer.email]
             );
         }
-
-        // 4. Insert User
-        await conn.query(
-            `INSERT INTO users (order_id, customer_name, phone_number, customer_email) VALUES (?, ?, ?, ?)`,
-            [newID, grabData.customer.name, grabData.customer.phone, grabData.customer.email]
-        );
 
         await conn.commit();
         res.status(200).send('OK');
