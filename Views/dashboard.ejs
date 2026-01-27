@@ -4,12 +4,7 @@
     <meta charset="UTF-8">
     <title>Middleware Admin Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .stat-card { cursor: pointer; transition: 0.3s; border: none; }
-        .stat-card:hover { transform: translateY(-5px); opacity: 0.9; }
-        .nav-tabs .nav-link { color: #555; }
-        .nav-tabs .nav-link.active { font-weight: bold; color: #0d6efd; }
-    </style>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="bg-light">
     <div class="container mt-4">
@@ -45,18 +40,20 @@
                     <table class="table align-middle">
                         <thead class="table-light">
                             <% if(currentTab === 'orders') { %>
-                                <tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th></tr>
+                                <tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Status Sync</th></tr>
                             <% } else if(currentTab === 'users') { %>
-                                <tr><th>Nama</th><th>Telepon</th><th>Email</th><th>Order Ref</th></tr>
+                                <tr><th>Grab Order ID</th><th>Nama</th><th>Telepon</th><th>Email</th><th>Order Ref</th></tr>
                             <% } else { %>
-                                <tr><th>Produk</th><th>Qty</th><th>Harga</th><th>Order Ref</th></tr>
+                                <tr><th>Grab Order ID</th><th>Produk</th><th>Qty</th><th>Harga</th><th>Order Ref</th></tr>
                             <% } %>
                         </thead>
                         <tbody>
                             <% data.forEach(row => { %>
                                 <tr>
                                     <% if(currentTab === 'orders') { %>
-                                        <td><strong><%= row.grab_order_id %></strong><br><small class="text-muted"><%= new Date(row.created_at).toLocaleString('id-ID') %></small></td>
+                                        <td>
+                                            <strong><%= row.grab_order_id %></strong><br><small class="text-muted"><%= new Date(row.created_at).toLocaleString('id-ID') %></small>
+                                        </td>
                                         <td><%= row.customer_name %></td>
                                         <td>
                                             <% if(row.barang) { %>
@@ -65,13 +62,26 @@
                                         </td>
                                         <td>Rp <%= Number(row.total_amount).toLocaleString() %></td>
                                         <td>
+                                            <span class="badge bg-<%= row.payment_status === 'PAID' ? 'info' : 'warning text-dark' %>">
+                                                <%= row.payment_status %>
+                                            </span>
+                                        </td>
+                                        <td>
                                             <span class="badge bg-<%= row.status_sync === 'SUCCESS' ? 'success' : 'danger' %>"><%= row.status_sync %></span>
-                                            <% if(row.error_msg) { %><br><small class="text-danger" style="font-size:0.7rem"><%= row.error_msg %></small><% } %>
                                         </td>
                                     <% } else if(currentTab === 'users') { %>
-                                        <td><%= row.customer_name %></td><td><%= row.phone_number %></td><td><%= row.customer_email %></td><td>#<%= row.order_id %></td>
+                                        <td><span class="badge bg-secondary"><%= row.grab_order_id %></span></td>
+                                        <td><%= row.customer_name %></td>
+                                        <td><%= row.phone_number %></td>
+                                        <td><%= row.customer_email %></td>
+                                        <td><small class="text-muted">#<%= row.order_id %></small></td>
+
                                     <% } else { %>
-                                        <td><%= row.product_name %></td><td><%= row.quantity %></td><td><%= row.sale_price %></td><td>#<%= row.order_id %></td>
+                                        <td><span class="badge bg-secondary"><%= row.grab_order_id %></span></td>
+                                        <td><%= row.product_name %></td>
+                                        <td><%= row.quantity %></td>
+                                        <td>Rp <%= Number(row.sale_price).toLocaleString() %></td>
+                                        <td><small class="text-muted">#<%= row.order_id %></small></td>
                                     <% } %>
                                 </tr>
                             <% }) %>
@@ -89,52 +99,53 @@
                     </ul>
                 </nav>
             </div>
-        </div>
-    </div>
 
-    <!-- log history -->
-     <div class="card shadow-sm mt-4">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Aktivitas Sinkronisasi Ginee</h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Waktu</th>
-                            <th>Order ID</th>
-                            <th>Status</th>
-                            <th>Pesan</th>
-                            <th>Detail Respon</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% syncLogs.forEach(log => { %>
-                        <tr>
-                            <td><small><%= new Date(log.created_at).toLocaleString('id-ID') %></small></td>
-                            <td><strong><%= log.grab_order_id %></strong></td>
-                            <td>
-                                <span class="badge <%= log.status_sync === 'SUCCESS' ? 'bg-success' : 'bg-danger' %>">
-                                    <%= log.status_sync %> (<%= log.status_code %>)
-                                </span>
-                            </td>
-                            <td><%= log.error_message %></td>
-                            <td>
-                                <% if (log.raw_response) { %>
-                                    <details>
-                                        <summary class="btn btn-sm btn-outline-info">Buka JSON</summary>
-                                        <pre class="bg-light p-2 mt-2 border" style="font-size: 11px; max-height: 200px; overflow: auto;"><%= log.raw_response %></pre>
-                                    </details>
-                                <% } else { %>
-                                    <span class="text-muted small">-</span>
-                                <% } %>
-                            </td>
-                        </tr>
-                        <% }) %>
-                    </tbody>
-                </table>
-            </div>
+            <!-- log history -->
+            <!-- <div class="card shadow-sm mt-4"> -->
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Aktivitas Sinkronisasi Ginee</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Waktu</th>
+                                    <th>Order ID</th>
+                                    <th>Status</th>
+                                    <th>Pesan</th>
+                                    <th>Detail Respon</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% syncLogs.forEach(log => { %>
+                                <tr>
+                                    <td><small><%= new Date(log.created_at).toLocaleString('id-ID') %></small></td>
+                                    <td><strong><%= log.grab_order_id %></strong></td>
+                                    <td>
+                                        <span class="badge <%= log.status_sync === 'SUCCESS' ? 'bg-success' : 'bg-danger' %>">
+                                            <%= log.status_sync %> (<%= log.status_code %>)
+                                        </span>
+                                    </td>
+                                    <td><%= log.error_message %></td>
+                                    <td>
+                                        <% if (log.raw_response) { %>
+                                            <details>
+                                                <summary class="btn btn-sm btn-outline-info">Buka JSON</summary>
+                                                <pre class="bg-light p-2 mt-2 border" style="font-size: 11px; max-height: 200px; overflow: auto;"><%= log.raw_response %></pre>
+                                            </details>
+                                        <% } else { %>
+                                            <span class="text-muted small">-</span>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <!-- </div> -->
+
         </div>
     </div>
 

@@ -9,6 +9,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+
+// Mengatur folder 'public' sebagai penyedia file statis
+app.use(express.static(path.join(__dirname, 'public')));
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -34,10 +38,10 @@ async function kirimKeGineeDenganRetry(orderData, maxAttempts = 3) {
     while (attempt < maxAttempts) {
         attempt++;
         try {
-            const response = await axios.post(`https://midapp.biz.id/simulasi-ginee-api`, {
+            const response = await axios.post(`http://localhost:${PORT}/simulasi-ginee-api`, {
                 order_id: orderData.orderID,
                 amount: orderData.amount
-            }, { timeout: 5000 });
+            }, { timeout: 10000 });
             return { success: true, message: response.data.message };
         } catch (error) {
             const errorMsg = error.response ? JSON.stringify(error.response.data) : error.message;
@@ -57,7 +61,7 @@ app.get('/', async (req, res) => {
 })
 
 // ==========================================
-// DASHBOARD ROUTE (MySQL VERSION)
+// DASHBOARD ROUTE (FIXED VERSION)
 // ==========================================
 app.get('/dashboard', async (req, res) => {
     try {
@@ -67,7 +71,7 @@ app.get('/dashboard', async (req, res) => {
         const limit = 5;
         const offset = (page - 1) * limit;
 
-        // Errors_log
+        // 1. Errors_log (Riwayat Sinkronisasi)
         const [syncLogs] = await pool.query(`
             SELECT e.*, o.grab_order_id 
             FROM errors_log e
@@ -76,7 +80,7 @@ app.get('/dashboard', async (req, res) => {
             LIMIT 20
         `);
 
-        // 1. Ambil Statistik (MySQL CASE WHEN)
+        // 2. Ambil Statistik
         const [statsRows] = await pool.query(`
             SELECT 
                 COUNT(*) as total,
@@ -88,6 +92,7 @@ app.get('/dashboard', async (req, res) => {
         let dataRows = [];
         let totalCount = 0;
 
+        // 3. Logika Tab dengan JOIN dan FIX LIMIT OFFSET
         if (tab === 'orders') {
             let filterSql = "";
             let params = [];
@@ -96,17 +101,16 @@ app.get('/dashboard', async (req, res) => {
                 params.push(status);
             }
             
-            // MySQL tidak punya json_agg sekuat Postgres, kita ambil data user saja dulu
-            // Item barang akan diproses di sisi EJS atau via sub-query sederhana
             const query = `
                 SELECT o.*, u.customer_name, u.phone_number
                 FROM orders o 
                 LEFT JOIN users u ON o.id = u.order_id
-                ${filterSql} ORDER BY o.created_at DESC LIMIT ? OFFSET ?`;
+                ${filterSql} 
+                ORDER BY o.created_at DESC 
+                LIMIT ${limit} OFFSET ${offset}`; // Menggunakan template literal untuk angka
             
-            [dataRows] = await pool.query(query, [...params, limit, offset]);
+            [dataRows] = await pool.query(query, params);
 
-            // Ambil items untuk setiap order secara manual
             for (let order of dataRows) {
                 const [items] = await pool.query("SELECT * FROM order_items WHERE order_id = ?", [order.id]);
                 order.barang = items; 
@@ -116,11 +120,26 @@ app.get('/dashboard', async (req, res) => {
             totalCount = countRes[0].cnt;
 
         } else if (tab === 'users') {
-            [dataRows] = await pool.query(`SELECT * FROM users ORDER BY id DESC LIMIT ? OFFSET ?`, [limit, offset]);
+            // JOIN ke tabel orders untuk ambil grab_order_id
+            [dataRows] = await pool.query(`
+                SELECT u.*, o.grab_order_id 
+                FROM users u
+                JOIN orders o ON u.order_id = o.id
+                ORDER BY u.id DESC 
+                LIMIT ${limit} OFFSET ${offset}
+            `);
             const [countRes] = await pool.query(`SELECT COUNT(*) as cnt FROM users`);
             totalCount = countRes[0].cnt;
-        } else {
-            [dataRows] = await pool.query(`SELECT * FROM order_items ORDER BY id DESC LIMIT ? OFFSET ?`, [limit, offset]);
+
+        } else if (tab === 'items') {
+            // JOIN ke tabel orders untuk ambil grab_order_id
+            [dataRows] = await pool.query(`
+                SELECT oi.*, o.grab_order_id 
+                FROM order_items oi
+                JOIN orders o ON oi.order_id = o.id
+                ORDER BY oi.id DESC 
+                LIMIT ${limit} OFFSET ${offset}
+            `);
             const [countRes] = await pool.query(`SELECT COUNT(*) as cnt FROM order_items`);
             totalCount = countRes[0].cnt;
         }
@@ -157,12 +176,12 @@ app.post('/webhook/grab', async (req, res) => {
 
         // 2. Insert Order
         const [orderRes] = await conn.query(
-            `INSERT INTO orders (grab_order_id, total_amount, raw_grab_data) VALUES (?, ?, ?)`,
-            [grabData.orderID, grabData.amount, JSON.stringify(grabData)]
+            `INSERT INTO orders (grab_order_id, total_amount, payment_status, raw_grab_data) VALUES (?, ?, ?, ?)`,
+            [grabData.orderID, grabData.amount, grabData.status || 'PAID', JSON.stringify(grabData)]
         );
         const newID = orderRes.insertId;
 
-        // 2. Insert Items
+        // 3. Insert Items
         for (let item of grabData.items) {
             await conn.query(
                 `INSERT INTO order_items (order_id, product_name, quantity, sale_price, regular_price) VALUES (?, ?, ?, ?, ?)`,
@@ -170,7 +189,7 @@ app.post('/webhook/grab', async (req, res) => {
             );
         }
 
-        // 3. Insert User
+        // 4. Insert User
         await conn.query(
             `INSERT INTO users (order_id, customer_name, phone_number, customer_email) VALUES (?, ?, ?, ?)`,
             [newID, grabData.customer.name, grabData.customer.phone, grabData.customer.email]

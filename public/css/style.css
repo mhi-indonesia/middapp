@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+body{
+    font-family: "Roboto";
+    font-size: 14px;
+}
+
+.stat-card { 
+    cursor: pointer;
+    transition: 0.3s;
+    border: none; 
+}
+
+.stat-card:hover { 
+    transform: translateY(-5px);
+    opacity: 0.9; 
+}
+.nav-tabs .nav-link { 
+    color: #555; 
+}
+
+.nav-tabs .nav-link.active { 
+    font-weight: bold;
+    color: #0d6efd;
+}
