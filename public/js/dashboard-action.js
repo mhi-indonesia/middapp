@@ -35,3 +35,17 @@ async function reSync(orderId, event) {
         btn.innerHTML = originalText;
     }
 }
+
+function showErrorLog(logId) {
+    const errorData = document.getElementById('error-data-' + logId).textContent;
+    // Mencoba parse jika data berupa string JSON, jika tidak tampilkan apa adanya
+    try {
+        const parsed = JSON.parse(JSON.parse(errorData)); // Double parse jika tersimpan sebagai stringified JSON
+        document.getElementById('errorContent').textContent = JSON.stringify(parsed, null, 4);
+    } catch (e) {
+        document.getElementById('errorContent').textContent = errorData;
+    }
+                
+    const modal = new bootstrap.Modal(document.getElementById('errorModal'));
+    modal.show();
+}
