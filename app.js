@@ -248,6 +248,10 @@ app.post('/webhook/grab', async (req, res) => {
                 );
             } else {
                 await pool.query("UPDATE orders SET status_sync = 'FAILED' WHERE id = ?", [finalID]);
+
+                // Pastikan gineeResult.message tidak kosong
+                const errorMessage = gineeResult.message || "Gagal tanpa pesan respon dari API";
+
                 await pool.query(
                     `INSERT INTO errors_log (order_id, status_sync, status_code, error_message, raw_response) VALUES (?, 'FAILED', 500, 'Gagal Sinkron Ginee', ?)`,
                     [finalID, gineeResult.message]
