@@ -81,9 +81,9 @@ app.get('/dashboard', async (req, res) => {
 
         // 1. Ambil DATA LOG dengan LIMIT & OFFSET
         const [syncLogs] = await pool.query(`
-            SELECT e.*, o.grab_order_id
+            SELECT e.*, COALESCE(o.grab_order_id, 'N/A') as grab_order_id 
             FROM errors_log e
-            JOIN orders o ON e.order_id = o.id
+            LEFT JOIN orders o ON e.order_id = o.id
             ORDER BY e.created_at DESC 
             LIMIT ${logLimit} OFFSET ${logOffset}
         `);
