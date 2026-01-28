@@ -38,7 +38,7 @@ async function kirimKeGineeDenganRetry(orderData, maxAttempts = 3) {
     while (attempt < maxAttempts) {
         attempt++;
         try {
-            const response = await axios.post(`http://localhost:${PORT}/simulasi-ginee-api`, {
+            const response = await axios.post(`https://midapp.biz.id/simulasi-ginee-api`, {
                 order_id: orderData.orderID,
                 amount: orderData.amount
             }, { timeout: 10000 });
