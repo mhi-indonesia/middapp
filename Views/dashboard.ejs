@@ -130,7 +130,7 @@
                                 <% syncLogs.forEach(log => { %>
                                     <tr>
                                         <td><small><%= new Date(log.created_at).toLocaleString('id-ID') %></small></td>
-                                        <td><strong><%= log.grab_order_id %></strong></td>
+                                        <td><strong><%= log.order_grab_id %></strong></td>
                                         <td>
                                             <% 
                                                 // Perbaikan: Pastikan status_sync tidak NULL di tampilan
