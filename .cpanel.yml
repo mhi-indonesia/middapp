@@ -1,8 +1,4 @@
----
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/midappbi/midapp/
-    - /bin/cp app.js $DEPLOYPATH
-    - /bin/cp package.json $DEPLOYPATH
-    - /bin/cp -R views $DEPLOYPATH
-    - /bin/cp -R public $DEPLOYPATH
+    - export DEPLOYPATH=/DATA/midappbi/midapp/
+    - /bin/cp -R * $DEPLOYPATH
