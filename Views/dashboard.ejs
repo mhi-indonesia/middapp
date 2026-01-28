@@ -143,14 +143,6 @@
                                         <td><small><%= log.error_message %></small></td>
                                         <td>
 
-                                            <!-- <% if (log.status_sync === 'FAILED') { %>
-                                                <button class="btn btn-sm btn-outline-danger" onclick="showError('<%= log.raw_response || log.error_message %>')">
-                                                    ⚠️ Detail Error
-                                                </button>
-                                            <% } else { %>
-                                                -
-                                            <% } %> -->
-
                                             <% if (log.raw_response) { %>
                                                 <button class="btn btn-sm btn-outline-danger" onclick="showErrorLog('<%= log.id %>')">
                                                     ⚠ Detail Error

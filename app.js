@@ -41,7 +41,7 @@ async function kirimKeGineeDenganRetry(orderData, maxAttempts = 3) {
             const response = await axios.post(`http://localhost:${PORT}/simulasi-ginee-api`, {
                 order_id: orderData.orderID,
                 amount: orderData.amount
-            }, { timeout: 5000 });
+            }, { timeout: 10000 });
             return { success: true, message: response.data.message };
         } catch (error) {
             const errorMsg = error.response ? JSON.stringify(error.response.data) : error.message;
@@ -83,7 +83,7 @@ app.get('/dashboard', async (req, res) => {
         const [syncLogs] = await pool.query(`
             SELECT e.*, o.grab_order_id
             FROM errors_log e
-            LEFT JOIN orders o ON e.order_id = o.id
+            JOIN orders o ON e.order_id = o.id
             ORDER BY e.created_at DESC 
             LIMIT ${logLimit} OFFSET ${logOffset}
         `);
