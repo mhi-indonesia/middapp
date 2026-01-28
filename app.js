@@ -85,7 +85,7 @@ app.get('/dashboard', async (req, res) => {
             FROM errors_log e
             LEFT JOIN orders o ON e.order_id = o.id
             ORDER BY e.created_at DESC 
-            LIMIT ? OFFSET ?
+            LIMIT ${logLimit} OFFSET ${logOffset}
         `);
 
         // 2. Hitung total halaman untuk log
