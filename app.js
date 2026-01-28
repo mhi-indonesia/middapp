@@ -324,12 +324,12 @@ app.post('/sync-order/:id', async (req, res) => {
 });
 
 app.post('/simulasi-ginee-api', (req, res) => {
-    // res.status(200).json({ message: "Sukses terhubung ke Ginee" });
-    res.status(400).json({ 
-        code: "INVALID_PARAM", 
-        message: "Product SKU 'GRB-001' not found in Ginee inventory",
-        request_id: "req-999222"
-    });
+    res.status(200).json({ message: "Sukses terhubung ke Ginee" });
+    // res.status(400).json({ 
+    //     code: "INVALID_PARAM", 
+    //     message: "Product SKU 'GRB-001' not found in Ginee inventory",
+    //     request_id: "req-999222"
+    // });
 });
 
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
