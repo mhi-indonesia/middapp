@@ -3,6 +3,7 @@
 body{
     font-family: "Roboto";
     font-size: 14px;
+    padding: 0%;
 }
 
 .stat-card { 
@@ -26,6 +27,6 @@ body{
 
 @media screen and (max-width : 768px){
     .container {
-        padding : 0;
+        padding : 0px !important;
     }
 }
