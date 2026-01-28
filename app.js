@@ -83,7 +83,7 @@ app.get('/dashboard', async (req, res) => {
         const [syncLogs] = await pool.query(`
             SELECT e.*, o.grab_order_id 
             FROM errors_log e
-            JOIN orders o ON e.order_id = o.id
+            LEFT JOIN orders o ON e.order_id = o.id
             ORDER BY e.created_at DESC 
             LIMIT ${logLimit} OFFSET ${logOffset}
         `);
