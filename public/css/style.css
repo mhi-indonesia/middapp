@@ -23,3 +23,9 @@ body{
     font-weight: bold;
     color: #0d6efd;
 }
+
+@media screen and (max-width : 768px){
+    .container {
+        padding : 0;
+    }
+}
