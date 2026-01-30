@@ -161,7 +161,8 @@ footer{
 @media  screen and (max-width: 768px) {
 
     main{
-        padding: 10px;
+        padding-inline: 20px;
+        padding-block: 3rem;
     }
     body{
         font-size: 10px !important;
