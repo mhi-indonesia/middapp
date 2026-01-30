@@ -36,14 +36,44 @@ async function reSync(orderId, event) {
     }
 }
 
+// function showErrorLog(logId) {
+//     const errorData = document.getElementById('error-data-' + logId).textContent;
+//     // Mencoba parse jika data berupa string JSON, jika tidak tampilkan apa adanya
+//     try {
+//         const parsed = JSON.parse(JSON.parse(errorData)); // Double parse jika tersimpan sebagai stringified JSON
+//         document.getElementById('errorContent').textContent = JSON.stringify(parsed, null, 4);
+//     } catch (e) {
+//         document.getElementById('errorContent').textContent = errorData;
+//     }
+                
+//     const modal = new bootstrap.Modal(document.getElementById('errorModal'));
+//     modal.show();
+// }
+
 function showErrorLog(logId) {
-    const errorData = document.getElementById('error-data-' + logId).textContent;
-    // Mencoba parse jika data berupa string JSON, jika tidak tampilkan apa adanya
+    const dataElement = document.getElementById('error-data-' + logId);
+    
+    // Proteksi jika elemen tidak ditemukan
+    if (!dataElement) {
+        console.error("Elemen dengan ID error-data-" + logId + " tidak ditemukan!");
+        alert("Data error tidak ditemukan di halaman ini.");
+        return;
+    }
+
+    const errorData = dataElement.textContent;
+    const displayElement = document.getElementById('errorContent');
+
+    if (!displayElement) {
+        alert("Elemen modal 'errorContent' tidak ditemukan!");
+        return;
+    }
+
     try {
-        const parsed = JSON.parse(JSON.parse(errorData)); // Double parse jika tersimpan sebagai stringified JSON
-        document.getElementById('errorContent').textContent = JSON.stringify(parsed, null, 4);
+        let parsed = JSON.parse(errorData);
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+        displayElement.textContent = JSON.stringify(parsed, null, 4);
     } catch (e) {
-        document.getElementById('errorContent').textContent = errorData;
+        displayElement.textContent = errorData;
     }
                 
     const modal = new bootstrap.Modal(document.getElementById('errorModal'));

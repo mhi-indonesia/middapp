@@ -2,49 +2,105 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Middleware Admin Panel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Midapp MHI</title>
+
+    <!-- css styling -->
+     <link rel="stylesheet" href="/css/style.css">
+     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
 </head>
-<body class="bg-light">
-    <div class="container-fluid mt-4">
-        <h2 class="mb-4">📊 Middleware Dashboard</h2>
+<body>
+    <!-- header -->
+     <header class="shadow">
+        <h2>📊 Middleware Dashboard</h2>
+     </header>
 
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card stat-card bg-primary text-white p-3 shadow-sm" onclick="location.href='/dashboard?tab=orders'">
-                    <h6>Total Pesanan</h6><h3><%= stats.total %></h3>
+    <!-- main -->
+     <main>
+
+        <!-- Filter Card -->
+        <section class="filter-card" id="filterCard">
+
+            <!-- total pesanan -->
+            <div class="total-pesanan shadow" id="totalPesanan" onclick="location.href='/dashboard?tab=orders'">
+                <div class="wrap">
+                    <h6>Total Pesanan</h6>
+                    <h3><%= stats.total %></h3>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card stat-card bg-success text-white p-3 shadow-sm" onclick="location.href='/dashboard?tab=orders&status=SUCCESS'">
-                    <h6>Sukses Sinkron</h6><h3><%= stats.sukses %></h3>
+
+            <!-- sukses sinkron -->
+             <div class="sukses-sinkron shadow" id="suksesSinkron" onclick="location.href='/dashboard?tab=orders&status=SUCCESS'">
+                <div class="wrap">
+                    <h6>Sukses Sinkron</h6>
+                    <h3><%= stats.sukses %></h3>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card stat-card bg-danger text-white p-3 shadow-sm" onclick="location.href='/dashboard?tab=orders&status=FAILED'">
-                    <h6>Gagal Sinkron</h6><h3><%= stats.gagal %></h3>
+
+            <!-- gagal sinkron -->
+             <div class="gagal-sinkron shadow" id="gagalSinkron" onclick="location.href='/dashboard?tab=orders&status=FAILED'">
+                <div class="wrap">
+                    <h6>Gagal Sinkron</h6>
+                    <h3><%= stats.gagal %></h3>
                 </div>
             </div>
-        </div>
 
-        <ul class="nav nav-tabs mb-3">
-            <li class="nav-item"><a class="nav-link <%= currentTab === 'orders' ? 'active' : '' %>" href="/dashboard?tab=orders">Tabel Orders</a></li>
-            <li class="nav-item"><a class="nav-link <%= currentTab === 'users' ? 'active' : '' %>" href="/dashboard?tab=users">Tabel Users</a></li>
-            <li class="nav-item"><a class="nav-link <%= currentTab === 'items' ? 'active' : '' %>" href="/dashboard?tab=items">Tabel Items</a></li>
-        </ul>
+        </section>
 
-        <div class="card shadow-sm border-0">
+        <!-- tabel utama -->
+        <section class="data-table shadow" id="dataTable">
+            <!-- Tab Tabel -->
+            <ul class="nav nav-tabs mb-3">
+                <li class="nav-item">
+                    <a class="nav-link <%= currentTab === 'orders' ? 'active' : '' %>" href="/dashboard?tab=orders">Tabel Orders</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <%= currentTab === 'users' ? 'active' : '' %>" href="/dashboard?tab=users">Tabel Users</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <%= currentTab === 'items' ? 'active' : '' %>" href="/dashboard?tab=items">Tabel Items</a>
+                </li>
+            </ul>
+
+            <!-- tabel konten -->
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table align-middle">
+
+                        <!-- kondisi untuk menampilkan tabel header -->
                         <thead class="table-light">
+
+                            <!-- manampilkan table header orders -->
                             <% if(currentTab === 'orders') { %>
-                                <tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Status Sync</th><th>Aksi</th></tr>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Items</th>
+                                    <th>Total</th>
+                                    <th>Payment</th>
+                                    <th>Status Sync</th>
+                                    <th>Aksi</th>
+                                </tr>
+
+                                <!-- Menampilkan table header users -->
                             <% } else if(currentTab === 'users') { %>
-                                <tr><th>Grab Order ID</th><th>Nama</th><th>Telepon</th><th>Email</th><th>Order Ref</th></tr>
+                                <tr>
+                                    <th>Grab Order ID</th>
+                                    <th>Nama</th>
+                                    <th>Telepon</th>
+                                    <th>Email</th>
+                                    <th>Order Ref</th>
+                                </tr>
+
+                                <!-- Menampilkan tabel header items -->
                             <% } else { %>
-                                <tr><th>Grab Order ID</th><th>Produk</th><th>Qty</th><th>Harga</th><th>Order Ref</th></tr>
+                                <tr>
+                                    <th>Grab Order ID</th>
+                                    <th>Produk</th>
+                                    <th>Qty</th>
+                                    <th>Harga</th>
+                                    <th>Order Ref</th>
+                                </tr>
                             <% } %>
                         </thead>
                         <tbody>
@@ -52,7 +108,7 @@
                                 <tr>
                                     <% if(currentTab === 'orders') { %>
                                         <td>
-                                            <strong><%= row.grab_order_id %></strong><br><small class="text-muted"><%= new Date(row.created_at).toLocaleString('id-ID') %></small>
+                                            <strong class="order_id"><%= row.grab_order_id %></strong><br><small class="text-muted"><%= new Date(row.created_at).toLocaleString('id-ID') %></small>
                                         </td>
                                         <td><%= row.customer_name %></td>
                                         <td>
@@ -71,7 +127,7 @@
                                         </td>
                                         <td>
                                             <% if (row.status_sync !== 'SUCCESS') { %>
-                                                <button class="btn btn-sm btn-outline-primary" onclick="reSync('<%= row.id %>', event)">
+                                                <button class="btn btn-sm btn-outline-primary action-button" onclick="reSync('<%= row.id %>', event)">
                                                     🔄 Sync
                                                 </button>
                                             <% } else { %>
@@ -108,85 +164,89 @@
                     </ul>
                 </nav>
             </div>
+        </section>
 
-            <!-- log history -->
-            <div class="card shadow-sm mt-4">
-                <div class="card-header bg-dark text-white">
-                    <h5 class="mb-0">🔄 Synchronization Logs</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
+        <!-- tabel log error -->
+        <section class="error-log-table shadow" id="errorLogTable">
+
+            <!-- Header -->
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">🔄 Synchronization Logs</h5>
+            </div>
+
+            <!-- tabel konten -->
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Waktu</th>
+                                <th>Order ID</th>
+                                <th>Status</th>
+                                <th>Pesan</th>
+                                <th>Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% syncLogs.forEach(log => { %>
                                 <tr>
-                                    <th>Waktu</th>
-                                    <th>Order ID</th>
-                                    <th>Status</th>
-                                    <th>Pesan</th>
-                                    <th>Detail</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% syncLogs.forEach(log => { %>
-                                    <tr>
-                                        <td><small><%= new Date(log.created_at).toLocaleString('id-ID') %></small></td>
-                                        <td><strong><%= log.grab_order_id %></strong></td>
-                                        <td>
-                                            <% 
-                                                // Perbaikan: Pastikan status_sync tidak NULL di tampilan
-                                                let currentStatus = log.status_sync || 'PENDING';
-                                                let badgeClass = (currentStatus === 'SUCCESS') ? 'bg-success' : 
+                                    <td><small><%= new Date(log.created_at).toLocaleString('id-ID') %></small></td>
+                                    <td class="order_id"><strong><%= log.grab_order_id %></strong></td>
+                                    <td>
+                                        <% 
+                                            // Perbaikan: Pastikan status_sync tidak NULL di tampilan
+                                            let currentStatus = log.status_sync || 'PENDING';
+                                            let badgeClass = (currentStatus === 'SUCCESS') ? 'bg-success' : 
                                                                 (currentStatus === 'FAILED') ? 'bg-danger' : 'bg-warning text-dark';
-                                            %>
-                                            <span class="badge rounded-pill <%= badgeClass %>"><%= currentStatus %></span>
-                                        </td>
-                                        <td><small><%= log.error_message %></small></td>
-                                        <td>
+                                        %>
+                                        <span class="badge rounded-pill <%= badgeClass %>"><%= currentStatus %></span>
+                                    </td>
+                                    <td><small><%= log.error_message %></small></td>
+                                    <td>
 
-                                            <% if (log.status_sync === 'FAILED') { %>
-                                                <button class="btn btn-sm btn-outline-danger" 
-                                                        onclick="showError('<%= log.raw_response || log.error_message || `Tidak ada detail error` %>')">
+                                        <% if (log.status_sync === 'FAILED') { %>
+                                            <!-- <button class="btn btn-sm btn-outline-danger" 
+                                                        onclick="showErrorLog('<%= log.raw_response || log.error_message || `Tidak ada detail error` %>')">
                                                     ⚠️ Detail Error
-                                                </button>
-                                            <% } else { %>
-                                                -
-                                            <% } %>
+                                            </button> -->
+                                            <span id="error-data-<%= log.id %>" style="display: none;">
+                                                <%= log.raw_response || log.error_message %>
+                                            </span>
 
-                                            <!-- <% if (log.raw_response) { %>
-                                                <button class="btn btn-sm btn-outline-danger" onclick="showErrorLog('<%= log.id %>')">
-                                                    ⚠ Detail Error
-                                                </button>
-                                                <script id="error-data-<%= log.id %>" type="application/json">
-                                                    <%- JSON.stringify(log.raw_response) %>
-                                                </script>
-                                            <% } else { %>
-                                                <span class="text-muted small">-</span>
-                                            <% } %> -->
-                                        </td>
-                                    </tr>
-                                <% }) %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <div class="card-footer d-flex justify-content-between align-items-center bg-white">
-                    <span class="small text-muted">Halaman <%= currentLogPage %> dari <%= totalLogPages %></span>
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0">
-                            <% for(let i = 1; i <= totalLogPages; i++) { %>
-                                <li class="page-item <%= currentLogPage === i ? 'active' : '' %>">
-                                    <a class="page-link" href="?tab=<%= currentTab %>&page=<%= currentPage %>&logPage=<%= i %>">
-                                        <%= i %>
-                                    </a>
-                                </li>
-                            <% } %>
-                        </ul>
-                    </nav>
+                                            <button class="btn btn-sm btn-outline-danger action-button" 
+                                                    onclick="showErrorLog('<%= log.id %>')">
+                                                ⚠️ Detail
+                                            </button>
+                                        <% } else { %>
+                                                -
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-        </div>
+            <!-- pagination -->
+            <div class="card-footer d-flex justify-content-between align-items-center bg-white">
+                <span class="small text-muted">Halaman <%= currentLogPage %> dari <%= totalLogPages %></span>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <% for(let i = 1; i <= totalLogPages; i++) { %>
+                            <li class="page-item <%= currentLogPage === i ? 'active' : '' %>">
+                                <a class="page-link" href="?tab=<%= currentTab %>&page=<%= currentPage %>&logPage=<%= i %>">
+                                        <%= i %>
+                                </a>
+                            </li>
+                        <% } %>
+                    </ul>
+                </nav>
+            </div>
+        </section>
+
+
+        <!-- popup detail error -->
         <div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -201,10 +261,15 @@
                 </div>
             </div>
         </div>
+     </main>
 
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-        
-        <script src="/js/dashboard-action.js"></script>
-    </div>
+     <!-- footer -->
+    <footer>
+        <p>Mitra Hub Indonesia &#169 2026, Marketplace Team</p>
+    </footer>
+<!-- js -->
+<script src="/js/dashboard-action.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 </body>
 </html>
