@@ -161,6 +161,7 @@ footer{
 @media  screen and (max-width: 768px) {
     body{
         font-size: 10px !important;
+        padding: 10px;
     }
 
     .total-pesanan, .sukses-sinkron, .gagal-sinkron{
