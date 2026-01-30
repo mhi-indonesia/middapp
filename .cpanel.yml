@@ -1,4 +1,4 @@
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/midappbi/midapp/
+    - export DEPLOYPATH=/DATA/midappbi/midapp/
     - /bin/cp -R * $DEPLOYPATH
